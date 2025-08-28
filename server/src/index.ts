@@ -16,6 +16,7 @@ import taskRoutes from "./routes/tasks";
 import statsRoutes from "./routes/stats";
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Security middleware
 app.use(securityMiddleware);
