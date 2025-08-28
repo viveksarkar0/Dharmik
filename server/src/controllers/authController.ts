@@ -43,6 +43,7 @@ export const register = async (req: Request, res: Response) => {
       sameSite: isProduction ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/',
+      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
     });
 
     res.status(201).json({
@@ -91,6 +92,7 @@ export const login = async (req: Request, res: Response) => {
       sameSite: isProduction ? 'none' : 'lax',
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
       path: '/',
+      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
     });
 
     res.json({
@@ -126,6 +128,7 @@ export const logout = async (req: Request, res: Response) => {
       secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
       path: '/',
+      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
     });
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error: unknown) {
