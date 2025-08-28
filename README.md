@@ -92,14 +92,17 @@ A full-stack task management application built with MongoDB, Express.js, React, 
    - Use API requests to create demo users:
    ```bash
    # Create Admin User
-   curl -X POST http://localhost:4000/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{"firstName":"Admin","lastName":"User","email":"admin@example.com","password":"Password123","role":"admin"}'
+
+  
+     "email":"admin@example.com",
+     
+     "password":"Password123"
    
    # Create Member User  
-   curl -X POST http://localhost:4000/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{"firstName":"Member","lastName":"User","email":"member@example.com","password":"Password123","role":"member"}'
+
+    "email":"member@example.com",
+
+    "password":"Password123"
    ```
 
 6. **Start the application**
