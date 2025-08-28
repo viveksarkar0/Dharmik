@@ -5,10 +5,11 @@ A full-stack task management application built with MongoDB, Express.js, React, 
 ## 🚀 Features
 
 ### Authentication & Authorization
-- JWT-based authentication with httpOnly cookies
+- JWT-based authentication with localStorage token storage
 - Role-based access control (Admin/Member)
 - Secure password hashing with bcrypt
 - Protected routes and middleware
+- No cookies - pure JWT token authentication
 
 ### Task Management
 - Full CRUD operations for tasks
@@ -268,7 +269,7 @@ dharmik/
 
 ### Development Trade-offs Made
 
-• **Cookie-based JWT vs Token Storage** - Chose httpOnly cookies over localStorage for enhanced security, trading some client-side flexibility for protection against XSS attacks
+• **JWT Token Storage** - Uses localStorage for JWT tokens with Authorization headers, providing client-side flexibility while maintaining secure authentication flow
 
 • **Tailwind CSS vs Component Libraries** - Selected Tailwind for complete design control and modern SaaS aesthetics, requiring more custom styling but achieving unique visual identity
 
@@ -292,10 +293,10 @@ dharmik/
 - **Separation of concerns** - Clear separation between UI and logic
 
 ### Security Considerations
-- JWT tokens stored in httpOnly cookies
+- JWT tokens stored in localStorage with Authorization headers
 - Password hashing with salt
 - Input validation and sanitization
-- CORS configuration
+- CORS configuration (credentials: false for JWT-only auth)
 - Role-based route protection
 
 ## 🚀 Deployment
@@ -343,6 +344,16 @@ This project is licensed under the MIT License.
 - React Router DOM types may need installation
 
 ## ✅ Recent Fixes
+
+### JWT-Only Authentication Implementation
+- **Issue**: Application was using cookie-based authentication which caused issues with token management
+- **Solution**: Completely migrated to JWT-only authentication:
+  - Removed all cookie dependencies (`cookie-parser` package)
+  - Updated CORS configuration to `credentials: false`
+  - Modified all API calls to use Authorization headers
+  - Updated client-side token storage to use localStorage
+  - Fixed circular import issues in authentication utilities
+- **Result**: Clean JWT-only authentication flow with proper token management
 
 ### Fast Refresh Issue Resolution
 - **Issue**: Fast Refresh was not working due to mixed exports (components + hooks) in the same file

@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuthHook';
+import { api } from '../utils/api';
 import type { User } from '../types/task';
 
 interface UserData extends User {
@@ -10,7 +11,7 @@ interface UserData extends User {
 }
 
 const AdminPage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [users, setUsers] = useState<UserData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,8 +27,6 @@ const AdminPage = () => {
     totalPages: 0
   });
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-
   const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
@@ -40,22 +39,18 @@ const AdminPage = () => {
         }
       });
 
-      const response = await fetch(`${API_BASE}/users?${queryParams}`, {
-        credentials: 'include'
-      });
+      const response = await api.get(`/users?${queryParams}`, token || undefined);
 
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.data || []);
-        setPagination(data.pagination || {
+      if (response.error) {
+        setError(response.error);
+      } else if (response.data) {
+        setUsers(response.data.data || []);
+        setPagination(response.data.pagination || {
           page: 1,
           limit: 10,
           total: 0,
           totalPages: 0
         });
-      } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || 'Failed to fetch users');
       }
     } catch (error) {
       console.error('Error fetching users:', error);
@@ -63,7 +58,7 @@ const AdminPage = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, API_BASE]);
+  }, [filters, token]);
 
   useEffect(() => {
     fetchUsers();
@@ -77,32 +72,21 @@ const AdminPage = () => {
   const updateUserRole = async (userId: string, newRole: 'admin' | 'member') => {
     try {
       setError(''); // Clear previous errors
-      const response = await fetch(`${API_BASE}/users/${userId}/role`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({ role: newRole })
-      });
+      const response = await api.patch(`/users/${userId}/role`, { role: newRole }, token || undefined);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Update the user in the local state instead of refetching all users
-          setUsers(prevUsers => 
-            prevUsers.map(user => 
-              user._id === userId 
-                ? { ...user, role: newRole }
-                : user
-            )
-          );
-        } else {
-          setError(data.message || 'Failed to update user role');
-        }
+      if (response.error) {
+        setError(response.error);
+      } else if (response.data?.success) {
+        // Update the user in the local state instead of refetching all users
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user._id === userId 
+              ? { ...user, role: newRole }
+              : user
+          )
+        );
       } else {
-        const errorData = await response.json().catch(() => ({}));
-        setError(errorData.message || 'Failed to update user role');
+        setError('Failed to update user role');
       }
     } catch (error) {
       console.error('Error updating user role:', error);
