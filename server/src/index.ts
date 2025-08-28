@@ -3,7 +3,6 @@ dotenv.config({ path: `.env.${process.env.NODE_ENV || "development"}` });
 
 import express from "express";
 import cors from "cors";
-import cookieParser from "cookie-parser";
 import path from "path";
 import fs from "fs";
 import { connectDB } from "./config/db";
@@ -29,7 +28,6 @@ app.use('/api', apiLimiter);
 // Basic middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cookieParser());
 app.use(sanitizeInput);
 
 // CORS configuration
@@ -39,13 +37,25 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
   'http://localhost:5174'
 ];
 
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  exposedHeaders: ['Set-Cookie']
-}));
+// CORS configuration with preflight request handling
+const corsOptions = {
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: false, // No cookies needed for JWT-only auth
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Authorization'],
+  maxAge: 600, // Cache preflight request for 10 minutes
+};
+
+// Enable CORS pre-flight
+app.options('*', cors(corsOptions));
+app.use(cors(corsOptions));
 
 // Static uploads
 const uploadDir = path.join(process.cwd(), "uploads");

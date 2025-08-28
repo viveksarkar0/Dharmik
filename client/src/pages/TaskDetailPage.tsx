@@ -31,8 +31,17 @@ const TaskDetailPage = () => {
   const fetchTask = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found. Please log in again.');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -71,12 +80,18 @@ const TaskDetailPage = () => {
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
       };
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify(updateData)
       });
 
@@ -100,9 +115,17 @@ const TaskDetailPage = () => {
     }
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('No authentication token found. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/tasks/${id}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {

@@ -56,12 +56,19 @@ const CreateTaskPage = () => {
           .filter((tag) => tag && tag.length <= 50),
       };
 
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError("No authentication token found. Please log in again.");
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${API_BASE}/tasks`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
         },
-        credentials: "include",
         body: JSON.stringify(taskData),
       });
 

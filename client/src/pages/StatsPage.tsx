@@ -1,12 +1,13 @@
 // Stats Widget/Page
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuthHook';
+import { api } from '../utils/api';
 import StatsPanel from '../components/StatsPanel';
 import type { TaskStats, Task } from '../types/task';
 
 const StatsPage = () => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [stats, setStats] = useState<TaskStats>({
     totalTasks: 0,
     statusCounts: {},
@@ -18,34 +19,29 @@ const StatsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-
-  useEffect(() => {
-    if (user?.role === 'admin') {
-      fetchDetailedStats();
-    }
-  }, [user]);
-
-  const fetchDetailedStats = async () => {
+  const fetchDetailedStats = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/stats/overview`, {
-        credentials: 'include'
-      });
+      const response = await api.get('/stats/overview', token || undefined);
 
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data.data);
-        setRecentTasks(data.data.recentTasks || []);
-      } else {
-        setError('Failed to fetch statistics');
+      if (response.error) {
+        setError(response.error);
+      } else if (response.data) {
+        setStats(response.data.data);
+        setRecentTasks(response.data.data.recentTasks || []);
       }
     } catch {
       setError('Network error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (user && token) {
+      fetchDetailedStats();
+    }
+  }, [user, token, fetchDetailedStats]);
 
   if (!user) {
     return (

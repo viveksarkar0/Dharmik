@@ -1,143 +1,196 @@
-import React, { useState, useEffect, type ReactNode } from 'react';
-import { AuthContext, type User, type RegisterData } from '../contexts/AuthContext';
+import React, { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { AuthContext, type User, type RegisterData, type AuthContextType } from '../contexts/AuthContext';
+import { api } from '../utils/api';
+import { useNavigate } from 'react-router-dom';
+
+// Utility: clear auth storage
+const clearAuth = (): void => {
+  localStorage.removeItem('token');
+  sessionStorage.removeItem('user');
+};
+
+interface AuthState {
+  user: User | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  token: string | null;
+}
+
+
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [state, setState] = useState<AuthState>(() => {
+    const savedUser = sessionStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    
+    return {
+      user: savedUser ? JSON.parse(savedUser) : null,
+      loading: true,
+      isAuthenticated: !!token,
+      token
+    };
+  });
+  
+  const navigate = useNavigate();
+  
+  // Update state helper
+  const updateState = useCallback((updates: Partial<AuthState>) => {
+    setState(prev => ({ ...prev, ...updates }));
+  }, []);
 
-  const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000';
-
+  // Initialize auth state on mount
   useEffect(() => {
-    checkAuth();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      
+    let isMounted = true;
+    
+    const initializeAuth = async () => {
+      const { token } = state;
       if (!token) {
-        setUser(null);
-        setIsAuthenticated(false);
+        if (isMounted) {
+          updateState({ loading: false, isAuthenticated: false, user: null });
+        }
         return;
       }
       
-      // Verify token with backend
-      const response = await fetch(`${API_BASE}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      try {
+        const response = await api.get<{ user: User }>('/auth/me', token);
+        
+        if (response.error || !response.data?.user) {
+          throw new Error(response.error || 'Invalid user data');
         }
-      });
-      
-      const data = await response.json();
-      console.log('Check auth response:', data); // Debug log
-      
-      if (data.success && data.user) {
-        setUser(data.user);
-        setIsAuthenticated(true);
-      } else {
-        // If token is invalid, clear it
-        localStorage.removeItem('token');
-        setUser(null);
-        setIsAuthenticated(false);
+        
+        if (isMounted) {
+          sessionStorage.setItem('user', JSON.stringify(response.data.user));
+          updateState({ user: response.data.user, isAuthenticated: true, loading: false });
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+        clearAuth();
+        if (isMounted) {
+          updateState({ user: null, isAuthenticated: false, loading: false });
+        }
       }
+    };
+
+    initializeAuth();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [state.token, updateState]);
+
+  // Check if the user is authenticated
+  const checkAuth = useCallback(async (): Promise<boolean> => {
+    const { token } = state;
+    if (!token) return false;
+    
+    try {
+      const response = await api.get<{ user: User }>('/auth/me', token);
+      
+      if (response.error || !response.data?.user) {
+        throw new Error(response.error || 'Invalid user data');
+      }
+      
+      sessionStorage.setItem('user', JSON.stringify(response.data.user));
+      updateState({ user: response.data.user, isAuthenticated: true });
+      
+      return true;
     } catch (error) {
       console.error('Auth check failed:', error);
-      setUser(null);
-      setIsAuthenticated(false);
-    } finally {
-      setLoading(false);
+      clearAuth();
+      updateState({ user: null, isAuthenticated: false });
+      return false;
     }
-  };
+  }, [state.token, updateState]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<void> => {
+    updateState({ loading: true });
+    
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const response = await api.post<{ token: string; user: User }>('/auth/login', { email, password });
       
-      const data = await response.json();
-      console.log('Login response:', data); // Debug log
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed');
+      if (response.error || !response.data?.token || !response.data.user) {
+        throw new Error(response.error || 'Login failed - invalid response');
       }
-
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        if (data.user) {
-          setUser(data.user);
-          setIsAuthenticated(true);
-        }
-        return data.user; // Return user data
-      } 
-      throw new Error('Login failed - invalid response');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Login failed';
-      throw new Error(message);
+      
+      const { token, user } = response.data;
+      
+      localStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
+      
+      updateState({ user, token, isAuthenticated: true, loading: false });
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Login error:', error);
+      clearAuth();
+      updateState({ user: null, isAuthenticated: false, loading: false });
+      throw error;
     }
-  };
+  }, [updateState, navigate]);
 
-  const register = async (userData: RegisterData) => {
+  const register = useCallback(async (userData: RegisterData): Promise<void> => {
+    updateState({ loading: true });
+    
     try {
-      const response = await fetch(`${API_BASE}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
+      const response = await api.post<{ token: string; user: User }>('/auth/register', userData);
       
-      const data = await response.json();
-      console.log('Register response:', data); // Debug log
+      if (response.error || !response.data?.token || !response.data.user) {
+        throw new Error(response.error || 'Registration failed - invalid response');
+      }
       
-      if (!response.ok) {
-        throw new Error(data.message || 'Registration failed');
-      }
-
-      if (data.success && data.token) {
-        localStorage.setItem('token', data.token);
-        if (data.user) {
-          setUser(data.user);
-          setIsAuthenticated(true);
-        }
-        return data.user; // Return user data
-      }
-      throw new Error('Registration failed - invalid response');
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Registration failed';
-      throw new Error(message);
+      const { token, user } = response.data;
+      
+      localStorage.setItem('token', token);
+      sessionStorage.setItem('user', JSON.stringify(user));
+      
+      updateState({ user, token, isAuthenticated: true, loading: false });
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Registration error:', error);
+      clearAuth();
+      updateState({ user: null, isAuthenticated: false, loading: false });
+      throw error;
     }
-  };
+  }, [updateState, navigate]);
 
-  const logout = async () => {
+  const logout = useCallback(async (): Promise<void> => {
+    const { token } = state;
+    
     try {
-      const token = localStorage.getItem('token');
       if (token) {
-        await fetch(`${API_BASE}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        await api.post('/auth/logout', {}, token);
       }
     } catch (error) {
       console.error('Logout request failed:', error);
     } finally {
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('token');
+      clearAuth();
+      updateState({ user: null, token: null, isAuthenticated: false });
+      navigate('/login');
     }
-  };
+  }, [state.token, updateState, navigate]);
+
+  const contextValue = useMemo<AuthContextType>(() => ({
+    user: state.user,
+    token: state.token,
+    loading: state.loading,
+    isAuthenticated: state.isAuthenticated,
+    login,
+    register,
+    logout,
+    checkAuth,
+  }), [
+    state.user, 
+    state.token, 
+    state.loading, 
+    state.isAuthenticated, 
+    login, 
+    register, 
+    logout, 
+    checkAuth
+  ]);
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, isAuthenticated }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
 };
-
