@@ -7,17 +7,16 @@ exports.connectDB = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const connectDB = async () => {
     try {
+        const mongoURI = process.env.MONGODB_URI || 'mongodb://localhost:27017/taskmanager';
         // Configure mongoose options for production
         const options = {
             maxPoolSize: 10, // Maintain up to 10 socket connections
-            serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-            socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
-            bufferCommands: false, // Disable mongoose buffering
-            bufferMaxEntries: 0, // Disable mongoose buffering
-            retryWrites: true,
+            serverSelectionTimeoutMS: 10000, // Keep trying to send operations for 10 seconds
+            connectTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
         };
-        const conn = await mongoose_1.default.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/taskmanager', options);
-        console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+        await mongoose_1.default.connect(mongoURI, options);
+        console.log(`✅ MongoDB Connected: ${mongoose_1.default.connection.host}`);
         // Handle connection events
         mongoose_1.default.connection.on('error', (err) => {
             console.error('❌ MongoDB connection error:', err);

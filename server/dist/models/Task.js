@@ -33,13 +33,7 @@ const taskSchema = new mongoose_1.default.Schema({
         default: 'medium'
     },
     dueDate: {
-        type: Date,
-        validate: {
-            validator: function (value) {
-                return !value || value > new Date();
-            },
-            message: 'Due date must be in the future'
-        }
+        type: Date
     },
     tags: [{
             type: String,
@@ -84,6 +78,8 @@ taskSchema.index({ priority: 1 });
 taskSchema.index({ createdAt: -1 });
 // Virtual for task age
 taskSchema.virtual('age').get(function () {
+    if (!this.createdAt)
+        return 0;
     return Math.floor((Date.now() - this.createdAt.getTime()) / (1000 * 60 * 60 * 24));
 });
 exports.default = mongoose_1.default.model('Task', taskSchema);

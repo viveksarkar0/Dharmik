@@ -19,6 +19,7 @@ const users_1 = __importDefault(require("./routes/users"));
 const tasks_1 = __importDefault(require("./routes/tasks"));
 const stats_1 = __importDefault(require("./routes/stats"));
 const app = (0, express_1.default)();
+app.set('trust proxy', 1);
 // Security middleware
 app.use(security_1.securityMiddleware);
 app.use(security_1.requestLogger);
@@ -37,15 +38,7 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
     'http://localhost:5174'
 ];
 app.use((0, cors_1.default)({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (mobile apps, etc.)
-        if (!origin)
-            return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
-            return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],

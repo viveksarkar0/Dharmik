@@ -35,26 +35,19 @@ export const register = async (req: Request, res: Response) => {
     // Generate token
     const token = generateToken(user._id.toString());
 
-    // Set cookie
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: '/',
-      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
-    });
+    // Return token in response
+    const userResponse = {
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+    };
 
     res.status(201).json({
       success: true,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
+      token,
+      user: userResponse
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -84,26 +77,19 @@ export const login = async (req: Request, res: Response) => {
     // Generate token
     const token = generateToken(user._id.toString());
 
-    // Set cookie
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-      path: '/',
-      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
-    });
+    // Return token in response
+    const userResponse = {
+      id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      role: user.role,
+    };
 
     res.json({
       success: true,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
+      token,
+      user: userResponse
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -121,15 +107,8 @@ export const logout = async (req: Request, res: Response) => {
       });
     }
 
-    // Clear cookie
-    const isProduction = process.env.NODE_ENV === 'production';
-    res.clearCookie('token', {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
-      path: '/',
-      domain: isProduction ? '.dharmik-lyart.vercel.app' : undefined,
-    });
+    // Clear token from client-side storage
+    // No need to clear server-side token as it's stateless
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Unknown error';

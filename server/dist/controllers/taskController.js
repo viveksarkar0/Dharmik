@@ -86,7 +86,7 @@ const createTask = async (req, res) => {
             description: description?.trim() || '',
             status: status || 'todo',
             priority: priority || 'medium',
-            dueDate: dueDate ? new Date(dueDate) : undefined,
+            dueDate: dueDate ? (isNaN(Date.parse(dueDate)) ? undefined : new Date(dueDate)) : undefined,
             tags: Array.isArray(tags) ? tags.filter(tag => tag && tag.trim()) : [],
             createdBy: req.user.id,
             assignee: assignee || req.user.id,
@@ -202,7 +202,7 @@ const updateTask = async (req, res) => {
             changes.push(`priority changed to "${priority}"`);
         }
         if (dueDate !== undefined) {
-            updates.dueDate = dueDate ? new Date(dueDate) : null;
+            updates.dueDate = dueDate ? (isNaN(Date.parse(dueDate)) ? null : new Date(dueDate)) : null;
             changes.push('due date updated');
         }
         if (tags !== undefined) {

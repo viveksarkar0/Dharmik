@@ -24,6 +24,7 @@ export const useTasks = () => {
     try {
       setLoading(true);
       const queryParams = new URLSearchParams();
+      const token = localStorage.getItem('token');
       
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== undefined && value !== '') {
@@ -32,7 +33,9 @@ export const useTasks = () => {
       });
 
       const response = await fetch(`${API_BASE}/tasks?${queryParams}`, {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -49,8 +52,11 @@ export const useTasks = () => {
 
   const fetchStats = useCallback(async () => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/stats/overview`, {
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -64,9 +70,12 @@ export const useTasks = () => {
 
   const deleteTask = useCallback(async (taskId: string) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: 'DELETE',
-        credentials: 'include'
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
       });
 
       if (response.ok) {
@@ -83,12 +92,13 @@ export const useTasks = () => {
 
   const createTask = useCallback(async (taskData: Partial<Task>) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/tasks`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify(taskData)
       });
 
@@ -107,12 +117,13 @@ export const useTasks = () => {
 
   const updateTask = useCallback(async (taskId: string, taskData: Partial<Task>) => {
     try {
+      const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE}/tasks/${taskId}`, {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
-        credentials: 'include',
         body: JSON.stringify(taskData)
       });
 

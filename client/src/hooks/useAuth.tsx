@@ -14,28 +14,32 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const checkAuth = async () => {
     try {
-      const response = await fetch(`${API_BASE}/auth/me`, {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.user) {
-          setUser(data.user);
-          setIsAuthenticated(true);
-        } else {
-          setUser(null);
-          setIsAuthenticated(false);
-        }
-      } else {
-        // Clear any invalid tokens
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
         setUser(null);
         setIsAuthenticated(false);
-        // Clear cookies on client side if possible
-        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+        return;
+      }
+      
+      // Verify token with backend
+      const response = await fetch(`${API_BASE}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      const data = await response.json();
+      console.log('Check auth response:', data); // Debug log
+      
+      if (data.success && data.user) {
+        setUser(data.user);
+        setIsAuthenticated(true);
+      } else {
+        // If token is invalid, clear it
+        localStorage.removeItem('token');
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -53,22 +57,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify({ email, password }),
       });
-
+      
       const data = await response.json();
-
+      console.log('Login response:', data); // Debug log
+      
       if (!response.ok) {
         throw new Error(data.message || 'Login failed');
       }
 
-      if (data.success && data.user) {
-        setUser(data.user);
-        setIsAuthenticated(true);
-      } else {
-        throw new Error('Login failed - invalid response');
-      }
+      if (data.success && data.token) {
+        localStorage.setItem('token', data.token);
+        if (data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+        }
+        return data.user; // Return user data
+      } 
+      throw new Error('Login failed - invalid response');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Login failed';
       throw new Error(message);
@@ -82,22 +89,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
         body: JSON.stringify(userData),
       });
-
+      
       const data = await response.json();
-
+      console.log('Register response:', data); // Debug log
+      
       if (!response.ok) {
         throw new Error(data.message || 'Registration failed');
       }
 
-      if (data.success && data.user) {
-        setUser(data.user);
-        setIsAuthenticated(true);
-      } else {
-        throw new Error('Registration failed - invalid response');
+      if (data.success && data.token) {
+        localStorage.setItem('token', data.token);
+        if (data.user) {
+          setUser(data.user);
+          setIsAuthenticated(true);
+        }
+        return data.user; // Return user data
       }
+      throw new Error('Registration failed - invalid response');
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Registration failed';
       throw new Error(message);
@@ -106,17 +116,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const logout = async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      const token = localStorage.getItem('token');
+      if (token) {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      }
     } catch (error) {
       console.error('Logout request failed:', error);
     } finally {
       setUser(null);
       setIsAuthenticated(false);
-      // Clear cookies on client side
-      document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+      localStorage.removeItem('token');
     }
   };
 
